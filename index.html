@@ -427,22 +427,6 @@ img {
 ]; // 这个才是真正的数组结尾！
 // --- 终极防御版初始化 ---
 // 以后全文都直接用 tg，不要再加 const 或 let
-   <script>
-/* ====== PATCH 1: 全局状态（必须有）====== */
-let cart = [];              // 购物车
-let currentItem = null;     // 当前弹窗商品
-
-// 可选：本地持久化（防止刷新清空）
-const CART_KEY = 'tiktalk_cart_v1';
-try {
-  const saved = JSON.parse(localStorage.getItem(CART_KEY) || '[]');
-  if (Array.isArray(saved)) cart = saved;
-} catch (e) {}
-
-function persistCart() {
-  try { localStorage.setItem(CART_KEY, JSON.stringify(cart)); } catch (e) {}
-}
-</script> 
 
         // --- 1. 切换页面逻辑 ---
         function switchTab(tabId) {
