@@ -476,111 +476,85 @@ function updateCartUI() {
             }
         }
 
-        // --- 2. 渲染点单页 (修复联动与变色) ---
-       function renderCartPage() {
-  const listCont = document.getElementById('cart-items-list');
+      // --- 2. 渲染点单页（含数量 + 联动高亮）---
+function renderOrderPage() {
+  const categories = [...new Set(menuData.map(item => item.category))];
+  const catNav = document.getElementById('category-list');
+  const prodCont = document.getElementById('product-container');
+  if (!catNav || !prodCont) return;
 
-  if (!cart || cart.length === 0) {
-    listCont.innerHTML = `<p class="text-gray-400 text-center py-20">清单是空的</p>`;
-    return;
-  }
-
-  const total = cart.reduce((sum, x) => sum + Number(x.qty || 0) * Number(x.price || 0), 0);
-
-  listCont.innerHTML = cart.map((line, index) => {
-    const lineTotal = Number(line.qty || 0) * Number(line.price || 0);
-
-    return `
-      <div class="bg-white p-4 rounded-xl mb-2 border border-gray-50">
-        <div class="flex justify-between items-start gap-3">
-          <div class="flex-1">
-            <div class="font-bold text-gray-800 text-sm">${line.name}</div>
-            <div class="text-[10px] text-orange-400 font-bold mt-0.5">${line.specs || ''}</div>
-            <div class="text-[10px] text-gray-400 mt-1">单价：₱ ${line.price}</div>
-          </div>
-
-          <div class="text-right">
-            <div class="text-orange-500 font-bold text-sm">小计：₱ ${lineTotal}</div>
-            <div class="flex items-center gap-2 mt-2 justify-end">
-              <button onclick="cartLineDec(${index})" class="w-7 h-7 rounded-full border font-bold">-</button>
-              <span class="w-6 text-center font-bold">${line.qty}</span>
-              <button onclick="cartLineInc(${index})" class="w-7 h-7 rounded-full bg-yellow-400 font-bold">+</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-  }).join('') + `
-    <div class="mt-10 p-5 bg-yellow-50 rounded-2xl border-2 border-dashed border-yellow-200">
-      <div class="flex justify-between mb-4 font-bold text-lg"><span>合计金额:</span><span>₱ ${total}</span></div>
-      <button onclick="submitOrder()" class="w-full bg-gray-900 text-white py-4 rounded-xl font-bold">立即下单支付</button>
+  // 左侧分类
+  catNav.innerHTML = categories.map((cat, idx) => `
+    <div onclick="scrollToCat('${cat}')" class="p-4 text-center text-[11px] border-b cursor-pointer cat-btn ${idx===0?'category-active':''}" id="btn-${cat}">
+      ${cat}
     </div>
-  `;
+  `).join('');
+
+  // 右侧商品（每个商品显示：- qty +）
+  prodCont.innerHTML = categories.map(cat => `
+    <div id="section-${cat}" class="mb-8 category-section">
+      <h2 class="font-bold text-gray-400 text-[10px] mb-3 uppercase tracking-tighter">${cat}</h2>
+      <div class="space-y-4">
+        ${menuData.filter(item => item.category === cat).map(item => {
+          const qty = getQtyByProductId(item.id); // 总数量（同商品不同规格也累计）
+          const showMinus = qty > 0;
+
+          return `
+            <div class="flex items-center gap-3 bg-white p-3 rounded-xl shadow-sm border border-gray-100">
+              <div class="w-14 h-14 bg-gray-50 rounded flex items-center justify-center text-2xl shrink-0">${item.icon}</div>
+
+              <div class="flex-1 min-w-0">
+                <h3 class="font-bold text-xs truncate">${item.id} | ${item.name}</h3>
+                <p class="text-orange-500 font-bold text-sm">₱ ${item.price}</p>
+              </div>
+
+              <div class="flex items-center gap-2">
+                ${showMinus ? `<button onclick="orderMinus('${item.id}')" class="w-8 h-8 rounded-full border font-bold">-</button>` : `<span class="w-8"></span>`}
+                <span class="w-6 text-center font-bold">${qty}</span>
+                <button onclick="handleAddClick('${item.id}')" class="bg-yellow-400 w-8 h-8 rounded-full font-bold active:scale-90 shadow-sm">+</button>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `).join('');
+
+  // 右侧滚动联动左侧高亮
+  prodCont.onscroll = () => {
+    let currentCat = '';
+    document.querySelectorAll('.category-section').forEach(section => {
+      const sectionTop = section.offsetTop - prodCont.offsetTop;
+      if (prodCont.scrollTop >= sectionTop - 50) {
+        currentCat = section.id.replace('section-', '');
+      }
+    });
+
+    if (currentCat) {
+      document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('category-active'));
+      const targetBtn = document.getElementById('btn-' + currentCat);
+      if (targetBtn) targetBtn.classList.add('category-active');
+    }
+  };
 }
 
-function cartLineDec(index) {
-  if (!cart[index]) return;
-  cart[index].qty -= 1;
-  if (cart[index].qty <= 0) cart.splice(index, 1);
-  persistCart();
-  updateCartUI();
-  renderCartPage();
-  renderOrderPage(); // 同步点单页数量
+// --- 3. 滚动函数 (点左边，右边动) ---
+function scrollToCat(catName) {
+  const prodCont = document.getElementById('product-container');
+  const element = document.getElementById('section-' + catName);
+  if (!prodCont || !element) return;
+
+  const savedHandler = prodCont.onscroll;
+  prodCont.onscroll = null;
+
+  element.scrollIntoView({ behavior: 'smooth' });
+
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('category-active'));
+  const activeBtn = document.getElementById('btn-' + catName);
+  if (activeBtn) activeBtn.classList.add('category-active');
+
+  setTimeout(() => { prodCont.onscroll = savedHandler; }, 800);
 }
-
-function cartLineInc(index) {
-  if (!cart[index]) return;
-  cart[index].qty += 1;
-  persistCart();
-  updateCartUI();
-  renderCartPage();
-  renderOrderPage(); // 同步点单页数量
-}
-
-            // 核心：右侧滚动时，左边自动变色
-            prodCont.onscroll = () => {
-                let currentCat = "";
-                const sections = document.querySelectorAll('.category-section');
-                
-                sections.forEach(section => {
-                    const sectionTop = section.offsetTop - prodCont.offsetTop;
-                    // 判断滑到了哪个区域（留出 50px 的余量更灵敏）
-                    if (prodCont.scrollTop >= sectionTop - 50) {
-                        currentCat = section.id.replace('section-', '');
-                    }
-                });
-
-                if (currentCat) {
-                    document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('category-active'));
-                    const targetBtn = document.getElementById('btn-' + currentCat);
-                    if (targetBtn) targetBtn.classList.add('category-active');
-                }
-            };
-
-        // --- 3. 滚动函数 (点左边，右边动) ---
-        function scrollToCat(catName) {
-            const prodCont = document.getElementById('product-container');
-            const element = document.getElementById('section-' + catName);
-            
-            if(element) {
-                // 1. 先解绑滚动事件，防止点击产生的滑动干扰变色逻辑
-                const savedHandler = prodCont.onscroll;
-                prodCont.onscroll = null;
-
-                // 2. 执行滚动
-                element.scrollIntoView({ behavior: 'smooth' });
-                
-                // 3. 立即改变左侧按钮颜色
-                document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('category-active'));
-                const activeBtn = document.getElementById('btn-' + catName);
-                if(activeBtn) activeBtn.classList.add('category-active');
-
-                // 4. 滚动动画结束后，把滚动监听重新装回去
-                setTimeout(() => {
-                    prodCont.onscroll = savedHandler;
-                }, 800); 
-            }
-        }
         // --- 4. 购物车逻辑 ---
         function addToCart(id) {
   const product = menuData.find(item => item.id === id);
