@@ -126,7 +126,7 @@ img {
                     <h2 class="text-sm font-bold text-gray-800">关于茶语</h2>
                 </div>
                 <p class="text-gray-500 text-xs leading-relaxed italic">
-                    "立足马尼拉8年，我们坚持使用优质茶底与新鲜水果。茶语，不仅是一杯茶，更是生活的一种态度。"
+                    "立足马尼拉8年，我们坚持使用优质茶底与新鲜水果。茶语，不仅是一杯茶，更是对生活的一种态度。"
                 </p>
             </div>
 
@@ -427,7 +427,22 @@ img {
 ]; // 这个才是真正的数组结尾！
 // --- 终极防御版初始化 ---
 // 以后全文都直接用 tg，不要再加 const 或 let
-    
+   <script>
+/* ====== PATCH 1: 全局状态（必须有）====== */
+let cart = [];              // 购物车
+let currentItem = null;     // 当前弹窗商品
+
+// 可选：本地持久化（防止刷新清空）
+const CART_KEY = 'tiktalk_cart_v1';
+try {
+  const saved = JSON.parse(localStorage.getItem(CART_KEY) || '[]');
+  if (Array.isArray(saved)) cart = saved;
+} catch (e) {}
+
+function persistCart() {
+  try { localStorage.setItem(CART_KEY, JSON.stringify(cart)); } catch (e) {}
+}
+</script> 
 
         // --- 1. 切换页面逻辑 ---
         function switchTab(tabId) {
@@ -478,7 +493,7 @@ img {
                                     <h3 class="font-bold text-xs truncate">${item.id} | ${item.name}</h3>
                                     <p class="text-orange-500 font-bold text-sm">₱ ${item.price}</p>
                                 </div>
-                                <button onclick="openSpecs('${item.id}')" class="bg-yellow-400 w-8 h-8 rounded-full font-bold active:scale-90 shadow-sm">+</button>
+                                <button onclick="handleAddClick('${item.id}')" class="bg-yellow-400 w-8 h-8 rounded-full font-bold active:scale-90 shadow-sm">+</button>
                             </div>
                         `).join('')}
                     </div>
@@ -532,11 +547,12 @@ img {
         }
         // --- 4. 购物车逻辑 ---
         function addToCart(id) {
-            const product = menuData.find(item => item.id === id);
-            cart.push(product);
-            updateCartUI();
-        }
-
+  const product = menuData.find(item => item.id === id);
+  if (!product) return;
+  cart.push({ ...product, cartId: `${product.id}_${Date.now()}` });
+  persistCart();
+  updateCartUI();
+}
         function updateCartUI() {
             const total = cart.reduce((sum, item) => sum + item.price, 0);
             document.getElementById('cart-count').innerText = cart.length;
@@ -576,19 +592,9 @@ img {
             cart.splice(index, 1);
             renderCartPage();
             updateCartUI();
+            persistCart();
         }
-
-function selectSpec(btn) {
-  const parent = btn.parentElement;
-  parent.querySelectorAll('button').forEach(b => {
-    b.classList.remove('active', 'bg-orange-50', 'text-orange-500', 'border-orange-500');
-    b.classList.add('bg-gray-50', 'text-gray-500', 'border-transparent');
-  });
-  btn.classList.add('active', 'bg-orange-50', 'text-orange-500', 'border-orange-500');
-  btn.classList.remove('bg-gray-50', 'text-gray-500', 'border-transparent');
-}
-
-
+    
         // =========================
 // 干净版：状态 / 配置 / 语言 / 弹窗 / 下单
 // （替换掉 switchTab('home') 后面那一坨重复逻辑）
@@ -800,7 +806,31 @@ function selectSpec(btn, group) {
     btn.classList.add('active', 'bg-orange-50', 'text-orange-500', 'border-orange-500');
     btn.classList.remove('bg-gray-50', 'text-gray-500', 'border-transparent');
 }
+function handleAddClick(id) {
+  const item = menuData.find(i => i.id === id);
+  if (!item) return;
 
+  // 小吃：直接加购，不开规格弹窗
+  if (!DRINK_CATEGORIES.includes(item.category)) {
+    addToCartDirect(item);
+    return;
+  }
+
+  // 饮品：开规格弹窗
+  openSpecs(id);
+}
+
+function addToCartDirect(item) {
+  const snapshot = {
+    ...item,
+    cartId: `${item.id}_${Date.now()}`,
+    specs: '' // 小吃无规格
+  };
+  cart.push(snapshot);
+  persistCart();
+  updateCartUI();
+}
+    
 // 你当前哪些分类属于饮品（需要规格）
 const DRINK_CATEGORIES = ['奶盖系列', '店长推荐', '果茶系列', '鲜榨果汁'];
 
@@ -876,6 +906,7 @@ async function submitOrder() {
         if (tg && typeof tg.showAlert === 'function') tg.showAlert(t('cartEmptyAlert'));
         else alert(t('cartEmptyAlert'));
         return;
+        persistCart();
     }
 
     const payload = buildOrderPayload();
@@ -994,6 +1025,7 @@ async function loadMenuFromBackend() {
 
     // 默认显示首页（保留你的原逻辑）
     switchTab('home');
+    updateCartUI();
     setTimeout(() => {
         if (document.getElementById('btn-奶盖系列')) scrollToCat('奶盖系列');
     }, 100);
@@ -1001,5 +1033,3 @@ async function loadMenuFromBackend() {
 </script>
 </body>
 </html>
-hi, welcome to tiktalk
-    欢迎光顾茶语奶茶
