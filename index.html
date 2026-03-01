@@ -124,11 +124,11 @@ img {
 
             <div class="bg-white rounded-2xl p-5 mb-4 shadow-sm border border-gray-100">
                 <div class="flex items-center gap-2 mb-3">
-                    <div class="w-1 h-4 bg-orange-500 rounded-full"></div>
+                    <div class="w-3 h-5 bg-orange-500 rounded-full"></div>
                     <h2 class="text-sm font-bold text-gray-800">关于茶语</h2>
                 </div>
                 <p class="text-gray-500 text-xs leading-relaxed italic">
-                    "立足马尼拉8年，我们坚持使用优质茶底与新鲜水果。茶语，不仅是一杯茶，更是对生活的一种态度。"
+                    "立足马尼拉8年，我们坚持使用优质茶底与新鲜水果。茶语，不仅是一杯奶茶，更是对生活的一种态度。"
                 </p>
             </div>
 
@@ -468,36 +468,65 @@ function persistCart() {
         }
 
         // --- 2. 渲染点单页 (修复联动与变色) ---
-        function renderOrderPage() {
-            const categories = [...new Set(menuData.map(item => item.category))];
-            const catNav = document.getElementById('category-list');
-            const prodCont = document.getElementById('product-container');
+       function renderCartPage() {
+  const listCont = document.getElementById('cart-items-list');
 
-            // 渲染左侧分类
-            catNav.innerHTML = categories.map(cat => `
-                <div onclick="scrollToCat('${cat}')" class="p-4 text-center text-[11px] border-b cursor-pointer cat-btn" id="btn-${cat}">
-                    ${cat}
-                </div>
-            `).join('');
+  if (!cart || cart.length === 0) {
+    listCont.innerHTML = `<p class="text-gray-400 text-center py-20">清单是空的</p>`;
+    return;
+  }
 
-            // 渲染右侧产品
-            prodCont.innerHTML = categories.map(cat => `
-                <div id="section-${cat}" class="mb-8 category-section">
-                    <h2 class="font-bold text-gray-400 text-[10px] mb-3 uppercase tracking-tighter">${cat}</h2>
-                    <div class="space-y-4">
-                        ${menuData.filter(item => item.category === cat).map(item => `
-                            <div class="flex items-center gap-3 bg-white p-3 rounded-xl shadow-sm border border-gray-100">
-                                <div class="w-14 h-14 bg-gray-50 rounded flex items-center justify-center text-2xl shrink-0">${item.icon}</div>
-                                <div class="flex-1 min-w-0">
-                                    <h3 class="font-bold text-xs truncate">${item.id} | ${item.name}</h3>
-                                    <p class="text-orange-500 font-bold text-sm">₱ ${item.price}</p>
-                                </div>
-                                <button onclick="handleAddClick('${item.id}')" class="bg-yellow-400 w-8 h-8 rounded-full font-bold active:scale-90 shadow-sm">+</button>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `).join('');
+  const total = cart.reduce((sum, x) => sum + Number(x.qty || 0) * Number(x.price || 0), 0);
+
+  listCont.innerHTML = cart.map((line, index) => {
+    const lineTotal = Number(line.qty || 0) * Number(line.price || 0);
+
+    return `
+      <div class="bg-white p-4 rounded-xl mb-2 border border-gray-50">
+        <div class="flex justify-between items-start gap-3">
+          <div class="flex-1">
+            <div class="font-bold text-gray-800 text-sm">${line.name}</div>
+            <div class="text-[10px] text-orange-400 font-bold mt-0.5">${line.specs || ''}</div>
+            <div class="text-[10px] text-gray-400 mt-1">单价：₱ ${line.price}</div>
+          </div>
+
+          <div class="text-right">
+            <div class="text-orange-500 font-bold text-sm">小计：₱ ${lineTotal}</div>
+            <div class="flex items-center gap-2 mt-2 justify-end">
+              <button onclick="cartLineDec(${index})" class="w-7 h-7 rounded-full border font-bold">-</button>
+              <span class="w-6 text-center font-bold">${line.qty}</span>
+              <button onclick="cartLineInc(${index})" class="w-7 h-7 rounded-full bg-yellow-400 font-bold">+</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('') + `
+    <div class="mt-10 p-5 bg-yellow-50 rounded-2xl border-2 border-dashed border-yellow-200">
+      <div class="flex justify-between mb-4 font-bold text-lg"><span>合计金额:</span><span>₱ ${total}</span></div>
+      <button onclick="submitOrder()" class="w-full bg-gray-900 text-white py-4 rounded-xl font-bold">立即下单支付</button>
+    </div>
+  `;
+}
+
+function cartLineDec(index) {
+  if (!cart[index]) return;
+  cart[index].qty -= 1;
+  if (cart[index].qty <= 0) cart.splice(index, 1);
+  persistCart();
+  updateCartUI();
+  renderCartPage();
+  renderOrderPage(); // 同步点单页数量
+}
+
+function cartLineInc(index) {
+  if (!cart[index]) return;
+  cart[index].qty += 1;
+  persistCart();
+  updateCartUI();
+  renderCartPage();
+  renderOrderPage(); // 同步点单页数量
+}
 
             // 核心：右侧滚动时，左边自动变色
             prodCont.onscroll = () => {
@@ -550,15 +579,73 @@ function persistCart() {
   if (!product) return;
   cart.push({ ...product, cartId: `${product.id}_${Date.now()}` });
   persistCart();
+  function updateCartUI() {
+  const count = cart.reduce((sum, x) => sum + Number(x.qty || 0), 0);
+  const total = cart.reduce((sum, x) => sum + Number(x.qty || 0) * Number(x.price || 0), 0);
+
+  document.getElementById('cart-count').innerText = count;
+  document.getElementById('cart-total').innerText = total;
+
+  if (count > 0) document.getElementById('cart-preview').classList.remove('hidden');
+  else document.getElementById('cart-preview').classList.add('hidden');
+}
+}
+        function makeCartKey(id, specs) {
+  return `${id}|${(specs || '').trim()}`;
+}
+
+function cartInc(item, specs = '') {
+  const key = makeCartKey(item.id, specs);
+  const line = cart.find(x => x.key === key);
+
+  if (line) {
+    line.qty += 1;
+  } else {
+    cart.push({
+      key,
+      id: item.id,
+      name: item.name,
+      price: Number(item.price || 0),
+      specs: specs || '',
+      qty: 1
+    });
+  }
+
+  persistCart();
   updateCartUI();
 }
-        function updateCartUI() {
-            const total = cart.reduce((sum, item) => sum + item.price, 0);
-            document.getElementById('cart-count').innerText = cart.length;
-            document.getElementById('cart-total').innerText = total;
-            if (cart.length > 0) document.getElementById('cart-preview').classList.remove('hidden');
-        }
 
+function cartDecByProductId(id) {
+  // 点单页的减号：按“最后添加的那条规格行”减 1（避免你在点单页还要选择规格）
+  for (let i = cart.length - 1; i >= 0; i--) {
+    if (cart[i].id === id) {
+      cart[i].qty -= 1;
+      if (cart[i].qty <= 0) cart.splice(i, 1);
+      persistCart();
+      updateCartUI();
+      return;
+    }
+  }
+}
+
+function cartIncByProductIdIfNoSpecs(item) {
+  // 小吃：无规格，直接加
+  cartInc(item, '');
+}
+
+function getQtyByProductId(id) {
+  return cart.reduce((sum, x) => sum + (x.id === id ? x.qty : 0), 0);
+}
+        function updateCartUI() {
+  const count = cart.reduce((sum, x) => sum + Number(x.qty || 0), 0);
+  const total = cart.reduce((sum, x) => sum + Number(x.qty || 0) * Number(x.price || 0), 0);
+
+  document.getElementById('cart-count').innerText = count;
+  document.getElementById('cart-total').innerText = total;
+
+  if (count > 0) document.getElementById('cart-preview').classList.remove('hidden');
+  else document.getElementById('cart-preview').classList.add('hidden');
+}
         function renderCartPage() {
             const listCont = document.getElementById('cart-items-list');
             if (cart.length === 0) {
@@ -822,9 +909,10 @@ function handleAddClick(id) {
   const item = menuData.find(i => i.id === id);
   if (!item) return;
 
-  // 小吃：直接加购，不开规格弹窗
+  // 小吃：无规格直接加
   if (!DRINK_CATEGORIES.includes(item.category)) {
-    addToCartDirect(item);
+    cartIncByProductIdIfNoSpecs(item);
+    renderOrderPage(); // 让数量立刻刷新
     return;
   }
 
@@ -869,7 +957,7 @@ function confirmAddToCart() {
         category_en_snapshot: currentItem.category_en || currentItem.category
     };
 
-    cart.push(itemSnapshot);
+    cartInc(currentItem, finalSpecs);
 
     if (typeof updateCartUI === 'function') updateCartUI();
     if (typeof renderCartPage === 'function') renderCartPage();
@@ -1048,6 +1136,9 @@ async function loadMenuFromBackend() {
         if (document.getElementById('btn-奶盖系列')) scrollToCat('奶盖系列');
     }, 100);
 })();
+window.orderMinus = orderMinus;
+window.cartLineInc = cartLineInc;
+window.cartLineDec = cartLineDec;
 </script>
 </body>
 </html>
