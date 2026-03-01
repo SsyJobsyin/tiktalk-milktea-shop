@@ -425,6 +425,19 @@ img {
     { id: 'H28', category: '鲜榨果汁', name: '满杯桂花酒酿酸奶', price: 200, desc: '独特风味', icon: '🥣' },
     { id: 'H30', category: '鲜榨果汁', name: '黑糖珍珠碎碎冰', price: 200, desc: '冰爽一夏', icon: '🧊' }
 ]; // 这个才是真正的数组结尾！
+        // ====== PATCH 1: 全局状态（必须有）======
+let cart = [];
+let currentItem = null;
+
+const CART_KEY = 'tiktalk_cart_v1';
+try {
+  const saved = JSON.parse(localStorage.getItem(CART_KEY) || '[]');
+  if (Array.isArray(saved)) cart = saved;
+} catch (e) {}
+
+function persistCart() {
+  try { localStorage.setItem(CART_KEY, JSON.stringify(cart)); } catch (e) {}
+}
 // --- 终极防御版初始化 ---
 // 以后全文都直接用 tg，不要再加 const 或 let
 
@@ -889,9 +902,9 @@ async function submitOrder() {
     if (!cart.length) {
         if (tg && typeof tg.showAlert === 'function') tg.showAlert(t('cartEmptyAlert'));
         else alert(t('cartEmptyAlert'));
-        return;
         persistCart();
-    }
+        return;
+ }
 
     const payload = buildOrderPayload();
 
