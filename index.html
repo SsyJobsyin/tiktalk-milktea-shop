@@ -429,7 +429,7 @@ img {
         // ====== PATCH 1: 全局状态（必须有）======
 let cart = [];
 let currentItem = null;
-
+let currentTab = 'home';
 const CART_KEY = 'tiktalk_cart_v1';
 try {
   const saved = JSON.parse(localStorage.getItem(CART_KEY) || '[]');
@@ -444,6 +444,7 @@ function persistCart() {
 
         // --- 1. 切换页面逻辑 ---
         function switchTab(tabId) {
+            currentTab = tabId;
             // 1. 增加这两个新页面的隐藏
             document.getElementById('page-home').classList.add('hidden');
             document.getElementById('page-order').classList.add('hidden');
@@ -750,18 +751,33 @@ function t(key) {
     return (I18N[appLang] && I18N[appLang][key]) || key;
 }
 function notify(msg) {
-  if (tg) {
-    // 优先用 Telegram 弹窗（更像 Mini App）
+  // 只有在 Telegram 环境、且 initData 存在时才认为可用
+  const inTelegram = tg && typeof tg === 'object' && !!tg.initData;
+
+  if (inTelegram) {
+    // 1) 先尝试 showPopup（但可能“存在函数却不支持”，会抛 WebAppMethodUnsupported）
     if (typeof tg.showPopup === 'function') {
-      tg.showPopup({ message: msg, buttons: [{ type: 'ok' }] });
-    } else if (typeof tg.showAlert === 'function') {
-      tg.showAlert(msg);
-    } else {
-      alert(msg);
+      try {
+        tg.showPopup({ message: msg, buttons: [{ type: 'ok' }] });
+        return;
+      } catch (e) {
+        // ignore and fallback
+      }
     }
-  } else {
-    alert(msg);
+
+    // 2) 再退化到 showAlert（兼容性更好）
+    if (typeof tg.showAlert === 'function') {
+      try {
+        tg.showAlert(msg);
+        return;
+      } catch (e) {
+        // ignore and fallback
+      }
+    }
   }
+
+  // 3) 最后兜底
+  alert(msg);
 }
 // ---- 本地 menuData 兼容双语字段（先做占位，后端接入后会覆盖真实英文）----
 function ensureMenuBilingualFields() {
