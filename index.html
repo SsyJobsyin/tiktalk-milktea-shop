@@ -609,19 +609,69 @@ function getQtyByProductId(id) {
   if (count > 0) document.getElementById('cart-preview').classList.remove('hidden');
   else document.getElementById('cart-preview').classList.add('hidden');
 }
+        // ====== Cart Page + line inc/dec (必须是全局函数) ======
+function renderCartPage() {
+  const listCont = document.getElementById('cart-items-list');
+  if (!listCont) return;
+
+  if (!cart || cart.length === 0) {
+    listCont.innerHTML = `<p class="text-gray-400 text-center py-20">清单是空的</p>`;
+    return;
+  }
+
+  const total = cart.reduce((sum, x) => sum + Number(x.qty || 0) * Number(x.price || 0), 0);
+
+  listCont.innerHTML = cart.map((line, index) => {
+    const lineTotal = Number(line.qty || 0) * Number(line.price || 0);
+
+    return `
+      <div class="bg-white p-4 rounded-xl mb-2 border border-gray-50">
+        <div class="flex justify-between items-start gap-3">
+          <div class="flex-1">
+            <div class="font-bold text-gray-800 text-sm">${line.name}</div>
+            <div class="text-[10px] text-orange-400 font-bold mt-0.5">${line.specs || ''}</div>
+            <div class="text-[10px] text-gray-400 mt-1">单价：₱ ${line.price}</div>
+          </div>
+
+          <div class="text-right">
+            <div class="text-orange-500 font-bold text-sm">小计：₱ ${lineTotal}</div>
+            <div class="flex items-center gap-2 mt-2 justify-end">
+              <button onclick="cartLineDec(${index})" class="w-7 h-7 rounded-full border font-bold">-</button>
+              <span class="w-6 text-center font-bold">${line.qty}</span>
+              <button onclick="cartLineInc(${index})" class="w-7 h-7 rounded-full bg-yellow-400 font-bold">+</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('') + `
+    <div class="mt-10 p-5 bg-yellow-50 rounded-2xl border-2 border-dashed border-yellow-200">
+      <div class="flex justify-between mb-4 font-bold text-lg"><span>合计金额:</span><span>₱ ${total}</span></div>
+      <button onclick="submitOrder()" class="w-full bg-gray-900 text-white py-4 rounded-xl font-bold">立即下单支付</button>
+    </div>
+  `;
+}
+
+function cartLineInc(index) {
+  if (!cart[index]) return;
+  cart[index].qty = Number(cart[index].qty || 0) + 1;
+  persistCart();
+  updateCartUI();
+  renderCartPage();
+  if (typeof renderOrderPage === 'function') renderOrderPage();
+}
+
+function cartLineDec(index) {
+  if (!cart[index]) return;
+  cart[index].qty = Number(cart[index].qty || 0) - 1;
+  if (cart[index].qty <= 0) cart.splice(index, 1);
+  persistCart();
+  updateCartUI();
+  renderCartPage();
+  if (typeof renderOrderPage === 'function') renderOrderPage();
+}
    <script>
   // ... 你现有代码 ...
-
-  function updateCartUI() {
-    const count = cart.reduce((sum, x) => sum + Number(x.qty || 0), 0);
-    const total = cart.reduce((sum, x) => sum + Number(x.qty || 0) * Number(x.price || 0), 0);
-
-    document.getElementById('cart-count').innerText = count;
-    document.getElementById('cart-total').innerText = total;
-
-    if (count > 0) document.getElementById('cart-preview').classList.remove('hidden');
-    else document.getElementById('cart-preview').classList.add('hidden');
-  }
 
   // ====== [新增] 购物车页渲染 + 行项目加减（解决 cartLineInc 未定义） ======
   function renderCartPage() {
@@ -967,10 +1017,11 @@ function confirmAddToCart() {
 
     cartInc(currentItem, finalSpecs);
 
-    if (typeof updateCartUI === 'function') updateCartUI();
-    if (typeof renderCartPage === 'function') renderCartPage();
+updateCartUI();
+renderOrderPage();   // ✅ 关键：立刻刷新点单页数量
+renderCartPage();
 
-    closeModal();
+closeModal();
 
     if (tg && typeof tg.showAlert === 'function') {
         // 这个提示在 Telegram 中会弹
