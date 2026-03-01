@@ -1049,7 +1049,12 @@ async function submitOrder() {
         const text = await res.text().catch(() => '');
         throw new Error(`HTTP ${res.status}: ${text}`);
       }
+      const ok = sendOrderToTelegram(payload);
+if (!ok) return;
 
+const orderNo = 'TY' + Date.now().toString().slice(-6);
+notify('已发送订单！订单号：' + orderNo);
+// 清空购物车...
       // 后端成功：给用户明确反馈 + 清空购物车 + 跳转取单
       const orderNo = 'TY' + Date.now().toString().slice(-6);
       notify('下单成功！订单号：' + orderNo);
@@ -1081,22 +1086,23 @@ async function submitOrder() {
 }
 
 function sendOrderToTelegram(payload) {
-    if (!payload) payload = buildOrderPayload();
+  if (!payload) payload = buildOrderPayload();
 
-    if (!tg) {
-        console.log('Mock submit payload (not in Telegram):', payload);
-        notify('当前不在 Telegram 环境，订单数据已输出到控制台（F12 → Console）');
-        return;
-    }
+  // 不在 Telegram：不要假装成功，直接提示用户
+  if (!tg || !tg.initData) {
+    console.log('Mock submit payload (not in Telegram):', payload);
+    alert('当前不是 Telegram Mini App 环境：订单未发送给店员。\n请在 Telegram 中打开再下单。');
+    return false;
+  }
 
-    try {
-        tg.sendData(JSON.stringify(payload));
-        // 有些场景会直接交给 bot 处理，不一定要 close
-        // tg.close();
-    } catch (e) {
-        console.error('tg.sendData failed:', e);
-        notify(t('submitFail'));
-    }
+  try {
+    tg.sendData(JSON.stringify(payload));
+    return true;
+  } catch (e) {
+    console.error('tg.sendData failed:', e);
+    alert('发送失败，请稍后重试');
+    return false;
+  }
 }
 
 // ---- 菜单接口（后端接好后使用）----
