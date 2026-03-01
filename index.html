@@ -899,67 +899,55 @@ function buildOrderPayload() {
 
 // ---- 提交订单：优先后端，失败则回退 Telegram ----
 async function submitOrder() {
+  if (!cart || cart.length === 0) {
+    alert('购物车是空的');
+    return;
+  }
 
-    if (!cart.length) {
-        alert('购物车是空的');
-        return;
+  const payload = buildOrderPayload();
+
+  // 1) 优先走后端接口（后端准备好后打开 USE_BACKEND）
+  if (APP_CONFIG.USE_BACKEND && APP_CONFIG.API_BASE) {
+    try {
+      const res = await fetch(`${APP_CONFIG.API_BASE}/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`HTTP ${res.status}: ${text}`);
+      }
+
+      // 后端成功：给用户明确反馈 + 清空购物车 + 跳转取单
+      const orderNo = 'TY' + Date.now().toString().slice(-6);
+      alert('下单成功！订单号：' + orderNo);
+
+      cart = [];
+      persistCart();
+      updateCartUI();
+      renderCartPage();
+      switchTab('pickup');
+      return;
+    } catch (err) {
+      console.error('Backend submit failed, fallback to Telegram:', err);
+      // 后端失败继续走 Telegram（容错）
     }
+  }
 
-    const payload = buildOrderPayload();
+  // 2) 没后端 / 后端失败：回退 Telegram sendData 或 mock
+  sendOrderToTelegram(payload);
 
-    console.log('Order Payload:', payload);
+  // MVP：前端直接给成功反馈（真正生产要等 bot/后端确认后再提示）
+  const orderNo = 'TY' + Date.now().toString().slice(-6);
+  alert('已发送订单（MVP）！订单号：' + orderNo);
 
-    // ====== 模拟成功（MVP阶段）======
-    const orderNo = 'TY' + Date.now().toString().slice(-6);
-
-    alert('下单成功！订单号：' + orderNo);
-
-    // 清空购物车
-    cart = [];
-    persistCart();
-    updateCartUI();
-    renderCartPage();
-
-    // 跳转到取单页
-    switchTab('pickup');
-}
-
-    const payload = buildOrderPayload();
-
-    // 1) 优先走后端接口（你后端完成后打开）
-    if (APP_CONFIG.USE_BACKEND && APP_CONFIG.API_BASE) {
-        try {
-            const res = await fetch(`${APP_CONFIG.API_BASE}/orders`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!res.ok) {
-                const text = await res.text();
-                throw new Error(`HTTP ${res.status}: ${text}`);
-            }
-
-            const data = await res.json().catch(() => ({}));
-            console.log('Order created:', data);
-
-            if (tg && typeof tg.showAlert === 'function') tg.showAlert(t('submitSuccess'));
-            else alert(t('submitSuccess'));
-
-            // 清空购物车
-            cart = [];
-            if (typeof updateCartUI === 'function') updateCartUI();
-            if (typeof renderCartPage === 'function') renderCartPage();
-
-            return;
-        } catch (err) {
-            console.error('Backend submit failed, fallback to Telegram:', err);
-            // 后端失败时继续走 Telegram 回传（MVP容错）
-        }
-    }
-
-    // 2) 回退 Telegram sendData（推荐发 JSON）
-    sendOrderToTelegram(payload);
+  cart = [];
+  persistCart();
+  updateCartUI();
+  renderCartPage();
+  switchTab('pickup');
 }
 
 function sendOrderToTelegram(payload) {
