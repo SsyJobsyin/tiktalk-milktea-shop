@@ -603,11 +603,25 @@ function getQtyByProductId(id) {
   const count = cart.reduce((sum, x) => sum + Number(x.qty || 0), 0);
   const total = cart.reduce((sum, x) => sum + Number(x.qty || 0) * Number(x.price || 0), 0);
 
-  document.getElementById('cart-count').innerText = count;
-  document.getElementById('cart-total').innerText = total;
+  const countEl = document.getElementById('cart-count');
+  const totalEl = document.getElementById('cart-total');
+  if (countEl) countEl.innerText = count;
+  if (totalEl) totalEl.innerText = total;
 
-  if (count > 0) document.getElementById('cart-preview').classList.remove('hidden');
-  else document.getElementById('cart-preview').classList.add('hidden');
+  const preview = document.getElementById('cart-preview');
+  if (!preview) return;
+
+  // ✅ 核心：在购物车页，不显示“去结算”浮条
+  const cartPage = document.getElementById('page-cart');
+  const isOnCartPage = cartPage && !cartPage.classList.contains('hidden');
+  if (isOnCartPage) {
+    preview.classList.add('hidden');
+    return;
+  }
+
+  // 其他页面：有商品才显示
+  if (count > 0) preview.classList.remove('hidden');
+  else preview.classList.add('hidden');
 }
         // ====== Cart Page + line inc/dec (必须是全局函数) ======
 function renderCartPage() {
