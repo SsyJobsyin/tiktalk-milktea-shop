@@ -654,7 +654,20 @@ const I18N = {
 function t(key) {
     return (I18N[appLang] && I18N[appLang][key]) || key;
 }
-
+function notify(msg) {
+  if (tg) {
+    // 优先用 Telegram 弹窗（更像 Mini App）
+    if (typeof tg.showPopup === 'function') {
+      tg.showPopup({ message: msg, buttons: [{ type: 'ok' }] });
+    } else if (typeof tg.showAlert === 'function') {
+      tg.showAlert(msg);
+    } else {
+      alert(msg);
+    }
+  } else {
+    alert(msg);
+  }
+}
 // ---- 本地 menuData 兼容双语字段（先做占位，后端接入后会覆盖真实英文）----
 function ensureMenuBilingualFields() {
     menuData.forEach(item => {
