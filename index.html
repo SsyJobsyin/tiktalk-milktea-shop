@@ -900,7 +900,7 @@ function buildOrderPayload() {
 // ---- 提交订单：优先后端，失败则回退 Telegram ----
 async function submitOrder() {
   if (!cart || cart.length === 0) {
-    alert('购物车是空的');
+    notify('购物车是空的');
     return;
   }
 
@@ -922,7 +922,7 @@ async function submitOrder() {
 
       // 后端成功：给用户明确反馈 + 清空购物车 + 跳转取单
       const orderNo = 'TY' + Date.now().toString().slice(-6);
-      alert('下单成功！订单号：' + orderNo);
+      notify('下单成功！订单号：' + orderNo);
 
       cart = [];
       persistCart();
@@ -941,7 +941,7 @@ async function submitOrder() {
 
   // MVP：前端直接给成功反馈（真正生产要等 bot/后端确认后再提示）
   const orderNo = 'TY' + Date.now().toString().slice(-6);
-  alert('已发送订单（MVP）！订单号：' + orderNo);
+  notify('已发送订单（MVP）！订单号：' + orderNo);
 
   cart = [];
   persistCart();
@@ -955,7 +955,7 @@ function sendOrderToTelegram(payload) {
 
     if (!tg) {
         console.log('Mock submit payload (not in Telegram):', payload);
-        alert('当前不在 Telegram 环境，订单数据已输出到控制台（F12 → Console）');
+        notify('当前不在 Telegram 环境，订单数据已输出到控制台（F12 → Console）');
         return;
     }
 
@@ -965,7 +965,7 @@ function sendOrderToTelegram(payload) {
         // tg.close();
     } catch (e) {
         console.error('tg.sendData failed:', e);
-        alert(t('submitFail'));
+        notify(t('submitFail'));
     }
 }
 
