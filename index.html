@@ -661,7 +661,10 @@ function renderCartPage() {
   }).join('') + `
     <div class="mt-10 p-5 bg-yellow-50 rounded-2xl border-2 border-dashed border-yellow-200">
       <div class="flex justify-between mb-4 font-bold text-lg"><span>合计金额:</span><span>₱ ${total}</span></div>
-      <button onclick="submitOrder()" class="w-full bg-gray-900 text-white py-4 rounded-xl font-bold">立即下单支付</button>
+      <button onclick="submitOrder().catch(e=>{console.error(e); alert('submitOrder 报错：'+ e.message);})"
+  class="w-full bg-gray-900 text-white py-4 rounded-xl font-bold">
+  立即下单支付
+</button>
     </div>
   `;
 }
