@@ -1049,12 +1049,7 @@ async function submitOrder() {
         const text = await res.text().catch(() => '');
         throw new Error(`HTTP ${res.status}: ${text}`);
       }
-      const ok = sendOrderToTelegram(payload);
-if (!ok) return;
-
-const orderNo = 'TY' + Date.now().toString().slice(-6);
-notify('已发送订单！订单号：' + orderNo);
-// 清空购物车...
+     
       // 后端成功：给用户明确反馈 + 清空购物车 + 跳转取单
       const orderNo = 'TY' + Date.now().toString().slice(-6);
       notify('下单成功！订单号：' + orderNo);
