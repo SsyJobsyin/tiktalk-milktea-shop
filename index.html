@@ -899,12 +899,30 @@ function buildOrderPayload() {
 
 // ---- 提交订单：优先后端，失败则回退 Telegram ----
 async function submitOrder() {
+
     if (!cart.length) {
-        if (tg && typeof tg.showAlert === 'function') tg.showAlert(t('cartEmptyAlert'));
-        else alert(t('cartEmptyAlert'));
-        persistCart();
+        alert('购物车是空的');
         return;
- }
+    }
+
+    const payload = buildOrderPayload();
+
+    console.log('Order Payload:', payload);
+
+    // ====== 模拟成功（MVP阶段）======
+    const orderNo = 'TY' + Date.now().toString().slice(-6);
+
+    alert('下单成功！订单号：' + orderNo);
+
+    // 清空购物车
+    cart = [];
+    persistCart();
+    updateCartUI();
+    renderCartPage();
+
+    // 跳转到取单页
+    switchTab('pickup');
+}
 
     const payload = buildOrderPayload();
 
