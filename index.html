@@ -428,7 +428,7 @@ img {
     { id: 'H30', category: '鲜榨果汁', name: '黑糖珍珠碎碎冰', price: 200, desc: '冰爽一夏', icon: '🧊' }
 ]; // 这个才是真正的数组结尾！
         // ====== PATCH 1: 全局状态（必须有）======
-let cart = []; // 每条为行项目：{ key, id, name, price, specs, qty }
+let cart = [];
 let currentItem = null;
 
 const CART_KEY = 'tiktalk_cart_v1';
@@ -437,41 +437,8 @@ try {
   if (Array.isArray(saved)) cart = saved;
 } catch (e) {}
 
-function makeCartKey(id, specs) {
-  return `${id}|${(specs || '').trim()}`;
-}
-
-function cartInc(item, specs = '') {
-  const key = makeCartKey(item.id, specs);
-  const line = cart.find(x => x.key === key);
-
-  if (line) {
-    line.qty += 1;
-  } else {
-    cart.push({
-      key,
-      id: item.id,
-      name: item.name,
-      price: Number(item.price || 0),
-      specs: specs || '',
-      qty: 1
-    });
-  }
-
-  persistCart();
-  updateCartUI();
-}
-
-function cartDecByProductId(id) {
-  for (let i = cart.length - 1; i >= 0; i--) {
-    if (cart[i].id === id) {
-      cart[i].qty -= 1;
-      if (cart[i].qty <= 0) cart.splice(i, 1);
-      persistCart();
-      updateCartUI();
-      return;
-    }
-  }
+function persistCart() {
+  try { localStorage.setItem(CART_KEY, JSON.stringify(cart)); } catch (e) {}
 }
 // --- 终极防御版初始化 ---
 // 以后全文都直接用 tg，不要再加 const 或 let
@@ -1084,3 +1051,6 @@ async function loadMenuFromBackend() {
 </script>
 </body>
 </html>
+
+
+
