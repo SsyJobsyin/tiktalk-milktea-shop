@@ -715,7 +715,29 @@ function cartLineDec(index) {
       </div>
     `;
   }
+function cartLineInc(index) {
+  const line = cart[index];
+  if (!line) return;
+  line.qty = Number(line.qty || 0) + 1;
+  persistCart();
+  updateCartUI();
+  renderCartPage();
+  // 让点单页数量也同步（可选但建议）
+  if (typeof renderOrderPage === 'function') renderOrderPage();
+}
 
+function cartLineDec(index) {
+  const line = cart[index];
+  if (!line) return;
+  line.qty = Number(line.qty || 0) - 1;
+
+  if (line.qty <= 0) cart.splice(index, 1);
+
+  persistCart();
+  updateCartUI();
+  renderCartPage();
+  if (typeof renderOrderPage === 'function') renderOrderPage();
+}
   function cartLineInc(index) {
     if (!cart[index]) return;
     cart[index].qty = Number(cart[index].qty || 0) + 1;
