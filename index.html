@@ -837,11 +837,7 @@ function selectSpec(btn, group) {
 function handleAddClick(id) {
   const item = menuData.find(i => i.id === id);
   if (!item) return;
-function orderMinus(id) {
-  cartDecByProductId(id); // 你已有的按商品ID减数量
-  renderOrderPage();
-  if (typeof renderCartPage === 'function') renderCartPage();
-}
+
   // 小吃：无规格直接加
   if (!DRINK_CATEGORIES.includes(item.category)) {
     cartIncByProductIdIfNoSpecs(item);
@@ -852,7 +848,11 @@ function orderMinus(id) {
   // 饮品：开规格弹窗
   openSpecs(id);
 }
-
+function orderMinus(id) {
+  cartDecByProductId(id); // 你已有的按商品ID减数量
+  renderOrderPage();
+  if (typeof renderCartPage === 'function') renderCartPage();
+}
 function addToCartDirect(item) {
   const snapshot = {
     ...item,
