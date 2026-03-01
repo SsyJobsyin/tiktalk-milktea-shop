@@ -439,16 +439,6 @@ try {
 function persistCart() {
   try { localStorage.setItem(CART_KEY, JSON.stringify(cart)); } catch (e) {}
 }
-function updateCartUI() {
-  const count = cart.reduce((sum, x) => sum + Number(x.qty || 0), 0);
-  const total = cart.reduce((sum, x) => sum + Number(x.qty || 0) * Number(x.price || 0), 0);
-
-  document.getElementById('cart-count').innerText = count;
-  document.getElementById('cart-total').innerText = total;
-
-  if (count > 0) document.getElementById('cart-preview').classList.remove('hidden');
-  else document.getElementById('cart-preview').classList.add('hidden');
-}
 // --- 终极防御版初始化 ---
 // 以后全文都直接用 tg，不要再加 const 或 let
 
@@ -847,7 +837,11 @@ function selectSpec(btn, group) {
 function handleAddClick(id) {
   const item = menuData.find(i => i.id === id);
   if (!item) return;
-
+function orderMinus(id) {
+  cartDecByProductId(id); // 你已有的按商品ID减数量
+  renderOrderPage();
+  if (typeof renderCartPage === 'function') renderCartPage();
+}
   // 小吃：无规格直接加
   if (!DRINK_CATEGORIES.includes(item.category)) {
     cartIncByProductIdIfNoSpecs(item);
