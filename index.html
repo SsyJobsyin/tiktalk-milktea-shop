@@ -440,6 +440,16 @@ try {
 function persistCart() {
   try { localStorage.setItem(CART_KEY, JSON.stringify(cart)); } catch (e) {}
 }
+function updateCartUI() {
+  const count = cart.reduce((sum, x) => sum + Number(x.qty || 0), 0);
+  const total = cart.reduce((sum, x) => sum + Number(x.qty || 0) * Number(x.price || 0), 0);
+
+  document.getElementById('cart-count').innerText = count;
+  document.getElementById('cart-total').innerText = total;
+
+  if (count > 0) document.getElementById('cart-preview').classList.remove('hidden');
+  else document.getElementById('cart-preview').classList.add('hidden');
+}
 // --- 终极防御版初始化 ---
 // 以后全文都直接用 tg，不要再加 const 或 let
 
@@ -579,17 +589,8 @@ function cartLineInc(index) {
   if (!product) return;
   cart.push({ ...product, cartId: `${product.id}_${Date.now()}` });
   persistCart();
-  function updateCartUI() {
-  const count = cart.reduce((sum, x) => sum + Number(x.qty || 0), 0);
-  const total = cart.reduce((sum, x) => sum + Number(x.qty || 0) * Number(x.price || 0), 0);
-
-  document.getElementById('cart-count').innerText = count;
-  document.getElementById('cart-total').innerText = total;
-
-  if (count > 0) document.getElementById('cart-preview').classList.remove('hidden');
-  else document.getElementById('cart-preview').classList.add('hidden');
 }
-}
+        
         function makeCartKey(id, specs) {
   return `${id}|${(specs || '').trim()}`;
 }
@@ -646,40 +647,6 @@ function getQtyByProductId(id) {
   if (count > 0) document.getElementById('cart-preview').classList.remove('hidden');
   else document.getElementById('cart-preview').classList.add('hidden');
 }
-        function renderCartPage() {
-            const listCont = document.getElementById('cart-items-list');
-            if (cart.length === 0) {
-                listCont.innerHTML = `<p class="text-gray-400 text-center py-20">清单是空的</p>`;
-                return;
-            }
-            listCont.innerHTML = cart.map((item, index) => `
-                <div class="flex justify-between items-center bg-white p-4 rounded-xl mb-2 border border-gray-50">
-            <div class="flex-1">
-                <div class="font-bold text-gray-800 text-sm">${item.name}</div>
-                
-                <div class="text-[10px] text-orange-400 font-bold mt-0.5">
-                    ${item.specs ? item.specs : ''} 
-                </div>
-            </div>
-            <div class="flex items-center gap-4">
-                <span class="text-orange-500 font-bold text-sm">₱ ${item.price}</span>
-                <button onclick="removeFromCart(${index})" class="text-red-400 text-xs px-2 py-1">移除</button>
-            </div>
-        </div>
-            `).join('') + `
-                <div class="mt-10 p-5 bg-yellow-50 rounded-2xl border-2 border-dashed border-yellow-200">
-                    <div class="flex justify-between mb-4 font-bold text-lg"><span>合计金额:</span><span>₱ ${cart.reduce((s,i)=>s+i.price,0)}</span></div>
-                    <button onclick="submitOrder()" class="w-full bg-gray-900 text-white py-4 rounded-xl font-bold">立即下单支付</button>
-                </div>
-            `;
-        }
-
-        function removeFromCart(index) {
-            cart.splice(index, 1);
-            renderCartPage();
-            updateCartUI();
-            persistCart();
-        }
     
         // =========================
 // 干净版：状态 / 配置 / 语言 / 弹窗 / 下单
