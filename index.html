@@ -189,16 +189,22 @@ img {
                 </div>
             </div>
             <div class="p-4 space-y-3 mt-4">
-                <div class="bg-white p-4 rounded-xl flex justify-between items-center shadow-sm">
-                    <span>📍 我的收货地址</span><span class="text-gray-400">➔</span>
-                </div>
-                <div class="bg-white p-4 rounded-xl flex justify-between items-center shadow-sm">
-                    <span>📞 联系客服</span><span class="text-gray-400">➔</span>
-                </div>
-                <div class="bg-white p-4 rounded-xl flex justify-between items-center shadow-sm">
-                    <span>⚙️ 个人设置</span><span class="text-gray-400">➔</span>
-                </div>
-            </div>
+                <div class="p-4 space-y-3 mt-4">
+  <button type="button" onclick="openAddressModal()"
+    class="w-full bg-white p-4 rounded-xl flex justify-between items-center shadow-sm active:scale-[0.99]">
+    <span>📍 我的收货地址</span><span class="text-gray-400">➔</span>
+  </button>
+
+  <button type="button" onclick="openSupportModal()"
+    class="w-full bg-white p-4 rounded-xl flex justify-between items-center shadow-sm active:scale-[0.99]">
+    <span>📞 联系客服</span><span class="text-gray-400">➔</span>
+  </button>
+
+  <button type="button" onclick="openSettingsModal()"
+    class="w-full bg-white p-4 rounded-xl flex justify-between items-center shadow-sm active:scale-[0.99]">
+    <span>⚙️ 个人设置</span><span class="text-gray-400">➔</span>
+  </button>
+</div>
         </section>
 
         <section id="page-cart" class="hidden p-4 h-full overflow-y-auto">
@@ -292,7 +298,92 @@ img {
             <span class="text-xl">👤</span><span class="text-[10px]">我的</span>
         </button>
     </nav>
+    <!-- ====== Address Modal ====== -->
+<div id="address-modal" class="fixed inset-0 bg-black/50 z-[120] hidden items-end">
+  <div class="bg-white w-full rounded-t-3xl p-6 animate-slide-up">
+    <div class="flex justify-between items-center mb-4">
+      <div class="font-bold text-lg">📍 我的收货地址</div>
+      <button type="button" onclick="closeAddressModal()" class="text-gray-400 text-2xl">✕</button>
+    </div>
 
+    <div class="space-y-3">
+      <input id="addr-name" class="w-full border rounded-xl p-3 text-sm" placeholder="收货人姓名" />
+      <input id="addr-phone" class="w-full border rounded-xl p-3 text-sm" placeholder="联系电话（例如 09xx...）" />
+      <textarea id="addr-line" class="w-full border rounded-xl p-3 text-sm" rows="3" placeholder="详细地址（楼栋/门牌/街道/区）"></textarea>
+      <textarea id="addr-note" class="w-full border rounded-xl p-3 text-sm" rows="2" placeholder="备注（可选：门禁/时间/口味偏好）"></textarea>
+    </div>
+
+    <div class="mt-5 flex gap-3">
+      <button type="button" onclick="closeAddressModal()" class="flex-1 border rounded-xl py-3 font-bold">取消</button>
+      <button type="button" onclick="saveAddress()" class="flex-1 bg-yellow-400 rounded-xl py-3 font-bold">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== Support Modal ====== -->
+<div id="support-modal" class="fixed inset-0 bg-black/50 z-[120] hidden items-end">
+  <div class="bg-white w-full rounded-t-3xl p-6 animate-slide-up">
+    <div class="flex justify-between items-center mb-4">
+      <div class="font-bold text-lg">📞 联系客服</div>
+      <button type="button" onclick="closeSupportModal()" class="text-gray-400 text-2xl">✕</button>
+    </div>
+
+    <div class="space-y-3">
+      <button type="button" onclick="openSupportTelegram()" class="w-full bg-white border rounded-xl p-4 text-left">
+        <div class="font-bold">Telegram 客服</div>
+        <div class="text-xs text-gray-400 mt-1">点击打开聊天</div>
+      </button>
+
+      <a class="block w-full bg-white border rounded-xl p-4" href="tel:+63XXXXXXXXXX">
+        <div class="font-bold">电话</div>
+        <div class="text-xs text-gray-400 mt-1">+63XXXXXXXXXX（把号码改成你的）</div>
+      </a>
+
+      <a class="block w-full bg-white border rounded-xl p-4" href="https://wa.me/63XXXXXXXXXX" target="_blank" rel="noopener">
+        <div class="font-bold">WhatsApp</div>
+        <div class="text-xs text-gray-400 mt-1">点击打开 WhatsApp（把号码改成你的）</div>
+      </a>
+    </div>
+
+    <div class="mt-5">
+      <button type="button" onclick="closeSupportModal()" class="w-full border rounded-xl py-3 font-bold">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== Settings Modal ====== -->
+<div id="settings-modal" class="fixed inset-0 bg-black/50 z-[120] hidden items-end">
+  <div class="bg-white w-full rounded-t-3xl p-6 animate-slide-up">
+    <div class="flex justify-between items-center mb-4">
+      <div class="font-bold text-lg">⚙️ 个人设置</div>
+      <button type="button" onclick="closeSettingsModal()" class="text-gray-400 text-2xl">✕</button>
+    </div>
+
+    <div class="space-y-3">
+      <div class="bg-gray-50 rounded-xl p-4">
+        <div class="font-bold mb-2">语言</div>
+        <div class="flex gap-2">
+          <button type="button" onclick="switchLang('zh')" class="flex-1 border rounded-xl py-2 font-bold">中文</button>
+          <button type="button" onclick="switchLang('en')" class="flex-1 border rounded-xl py-2 font-bold">EN</button>
+        </div>
+      </div>
+
+      <button type="button" onclick="clearSavedAddress()" class="w-full bg-white border rounded-xl p-4 text-left">
+        <div class="font-bold">清空收货地址</div>
+        <div class="text-xs text-gray-400 mt-1">删除本机保存的信息</div>
+      </button>
+
+      <button type="button" onclick="clearCartAndRefresh()" class="w-full bg-white border rounded-xl p-4 text-left">
+        <div class="font-bold">清空购物车</div>
+        <div class="text-xs text-gray-400 mt-1">用于测试</div>
+      </button>
+    </div>
+
+    <div class="mt-5">
+      <button type="button" onclick="closeSettingsModal()" class="w-full border rounded-xl py-3 font-bold">关闭</button>
+    </div>
+  </div>
+</div>
     <script>
         // --- 数据配置 (已修复定义错误) ---
          const menuData = [
@@ -802,6 +893,7 @@ function notify(msg) {
   // 3) 最后兜底
   alert(msg);
 }
+        
 // ---- 本地 menuData 兼容双语字段（先做占位，后端接入后会覆盖真实英文）----
 function ensureMenuBilingualFields() {
     menuData.forEach(item => {
@@ -1334,6 +1426,98 @@ function bindMePageActions() {
     if (txt.includes('个人设置')) card.onclick = openSettings;
     card.classList.add('cursor-pointer');
   });
+}
+// ====== Me page modals + address storage ======
+const ADDRESS_KEY = 'tiktalk_address_v1';
+
+function openAddressModal() {
+  const m = document.getElementById('address-modal');
+  if (!m) return;
+
+  // 回填
+  try {
+    const saved = JSON.parse(localStorage.getItem(ADDRESS_KEY) || '{}');
+    document.getElementById('addr-name').value  = saved.name  || '';
+    document.getElementById('addr-phone').value = saved.phone || '';
+    document.getElementById('addr-line').value  = saved.addr  || '';
+    document.getElementById('addr-note').value  = saved.note  || '';
+  } catch (e) {}
+
+  m.classList.remove('hidden');
+  m.classList.add('flex');
+}
+function closeAddressModal() {
+  const m = document.getElementById('address-modal');
+  if (!m) return;
+  m.classList.add('hidden');
+  m.classList.remove('flex');
+}
+function saveAddress() {
+  const name  = (document.getElementById('addr-name')?.value || '').trim();
+  const phone = (document.getElementById('addr-phone')?.value || '').trim();
+  const addr  = (document.getElementById('addr-line')?.value || '').trim();
+  const note  = (document.getElementById('addr-note')?.value || '').trim();
+
+  if (!name || !phone || !addr) {
+    notify('请填写：姓名 / 电话 / 地址');
+    return;
+  }
+
+  const payload = { name, phone, addr, note, updatedAt: Date.now() };
+  try { localStorage.setItem(ADDRESS_KEY, JSON.stringify(payload)); } catch (e) {}
+
+  notify('地址已保存');
+  closeAddressModal();
+}
+
+function clearSavedAddress() {
+  try { localStorage.removeItem(ADDRESS_KEY); } catch (e) {}
+  notify('已清空收货地址');
+}
+
+function openSupportModal() {
+  const m = document.getElementById('support-modal');
+  if (!m) return;
+  m.classList.remove('hidden');
+  m.classList.add('flex');
+}
+function closeSupportModal() {
+  const m = document.getElementById('support-modal');
+  if (!m) return;
+  m.classList.add('hidden');
+  m.classList.remove('flex');
+}
+
+// 把下面这个链接换成你真实客服链接（或用 tg.openTelegramLink）
+function openSupportTelegram() {
+  const url = 'https://t.me/YOUR_SUPPORT_USERNAME'; // 改这里
+  if (tg && typeof tg.openTelegramLink === 'function') {
+    tg.openTelegramLink(url);
+  } else {
+    window.open(url, '_blank');
+  }
+}
+
+function openSettingsModal() {
+  const m = document.getElementById('settings-modal');
+  if (!m) return;
+  m.classList.remove('hidden');
+  m.classList.add('flex');
+}
+function closeSettingsModal() {
+  const m = document.getElementById('settings-modal');
+  if (!m) return;
+  m.classList.add('hidden');
+  m.classList.remove('flex');
+}
+
+function clearCartAndRefresh() {
+  cart = [];
+  persistCart();
+  updateCartUI();
+  if (typeof renderCartPage === 'function') renderCartPage();
+  if (typeof renderOrderPage === 'function') renderOrderPage();
+  notify('购物车已清空');
 }
 // ---- 初始化 ----
 (function initAppPatch() {
