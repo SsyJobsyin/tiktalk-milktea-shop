@@ -1537,32 +1537,6 @@ function clearCartAndRefresh() {
         if (document.getElementById('btn-奶盖系列')) scrollToCat('奶盖系列');
     }, 100);
 })();
-   // ====== Me page click bindings ======
-function bindMePageActions() {
-  const addr = document.getElementById('me-address');
-  const support = document.getElementById('me-support');
-  const settings = document.getElementById('me-settings');
-
-  if (addr) {
-    addr.onclick = () => {
-      // 先用最简单的占位，后续你要弹窗填地址我再给你完整 modal + localStorage
-      alert('打开：收货地址填写（待实现）');
-    };
-  }
-
-  if (support) {
-    support.onclick = () => {
-      alert('联系客服：+63 XXX XXX XXXX（待替换）');
-    };
-  }
-
-  if (settings) {
-    settings.onclick = () => {
-      alert('打开：个人设置（待实现）');
-    };
-  }
-}
-
 // 放在初始化末尾调用一次
 bindMePageActions();     
 // window.orderMinus = orderMinus;
