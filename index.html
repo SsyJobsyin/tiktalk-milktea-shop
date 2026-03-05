@@ -191,7 +191,11 @@ img {
             <div class="p-4 space-y-3 mt-4">
                 <div class="p-4 space-y-3 mt-4">
   <div id="me-address" class="bg-white p-4 rounded-xl flex justify-between items-center shadow-sm cursor-pointer">
-  <span>📍 我的收货地址</span><span class="text-gray-400">➔</span>
+  <div>
+    <div class="font-semibold">📍 我的收货地址</div>
+    <div id="me-address-summary" class="text-xs text-gray-400 mt-1">未填写</div>
+  </div>
+  <span class="text-gray-400">➔</span>
 </div>
 
 <div id="me-support" class="bg-white p-4 rounded-xl flex justify-between items-center shadow-sm cursor-pointer">
@@ -534,6 +538,14 @@ img {
     { id: 'H28', category: '鲜榨果汁', name: '满杯桂花酒酿酸奶', price: 200, desc: '独特风味', icon: '🥣' },
     { id: 'H30', category: '鲜榨果汁', name: '黑糖珍珠碎碎冰', price: 200, desc: '冰爽一夏', icon: '🧊' }
 ]; // 这个才是真正的数组结尾！
+        // ====== Global Namespace (avoid duplicate declarations) ======
+window.APP = window.APP || {};
+APP.STORE = APP.STORE || {};
+APP.UI = APP.UI || {};
+APP.KEYS = APP.KEYS || {
+  ADDRESS: 'tiktalk_address_v1',
+  ORDERS:  'tiktalk_orders_v1'
+};
         // ====== PATCH 1: 全局状态（必须有）======
 let cart = [];
 let currentItem = null;
@@ -547,6 +559,14 @@ try {
 function persistCart() {
   try { localStorage.setItem(CART_KEY, JSON.stringify(cart)); } catch (e) {}
 }
+        APP.UI.refreshMeSummary = function () {
+  const el = document.getElementById('me-address-summary');
+  if (!el) return;
+  const a = APP.STORE.loadAddress();
+  if (!a) { el.innerText = '未填写'; return; }
+  const short = `${a.name || ''} · ${a.phone || ''} · ${a.addr || ''}`.trim();
+  el.innerText = short.length > 40 ? short.slice(0, 40) + '…' : short;
+};
 // --- 终极防御版初始化 ---
 // 以后全文都直接用 tg，不要再加 const 或 let
 
@@ -1111,32 +1131,36 @@ closeModal();
 
 // ---- 订单构造（给后端 / Telegram 同时使用）----
 function buildOrderPayload() {
-    const total = cart.reduce((sum, item) => sum + Number(item.price || 0), 0);
+  const address = APP.STORE.loadAddress() || {};
+  const total = cart.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.qty || 1), 0);
 
-    return {
-        source: 'telegram_mini_app',
-        customerLang: appLang, // 用户下单语言
-        // 员工端建议固定双语显示，不依赖 customerLang
-        items: cart.map((item, idx) => ({
-            lineNo: idx + 1,
-            productId: item.id,
-            productNameZh: item.product_name_zh_snapshot || item.name_zh || item.name,
-            productNameEn: item.product_name_en_snapshot || item.name_en || item.name,
-            categoryZh: item.category_zh_snapshot || item.category_zh || item.category,
-            categoryEn: item.category_en_snapshot || item.category_en || item.category,
-            specs: item.specs || '',
-            unitPrice: Number(item.price || 0),
-            quantity: 1,
-            lineTotal: Number(item.price || 0)
-        })),
-        subtotal: total,
-        total: total,
-        currency: 'PHP',
-        paymentMethod: 'pay_at_store', // MVP：到店付款
-        paymentStatus: 'unpaid',
-        status: 'pending',
-        createdAt: new Date().toISOString()
-    };
+  return {
+    source: 'telegram_mini_app',
+    customerLang: appLang,
+    customer: {
+      name: address.name || '',
+      phone: address.phone || '',
+      address: address.addr || '',
+      note: address.note || ''
+    },
+    items: cart.map((item, idx) => ({
+      lineNo: idx + 1,
+      productId: item.id,
+      productNameZh: item.product_name_zh_snapshot || item.name_zh || item.name,
+      productNameEn: item.product_name_en_snapshot || item.name_en || item.name,
+      specs: item.specs || '',
+      unitPrice: Number(item.price || 0),
+      quantity: Number(item.qty || 1),
+      lineTotal: Number(item.price || 0) * Number(item.qty || 1)
+    })),
+    subtotal: total,
+    total,
+    currency: 'PHP',
+    paymentMethod: 'pay_at_store',
+    paymentStatus: 'unpaid',
+    status: 'pending',
+    createdAt: new Date().toISOString()
+  };
 }
 
 // ---- 提交订单：优先后端，失败则回退 Telegram ----
@@ -1147,7 +1171,15 @@ async function submitOrder() {
   }
 
   const payload = buildOrderPayload();
-
+  const address = APP.STORE.loadAddress();
+  if (!address || !address.name || !address.phone || !address.addr) {
+    alert('请先在【我的 → 收货地址】填写信息，再下单');
+    // 可选：自动跳转到“我的”
+    switchTab?.('me');
+    // 可选：自动打开地址弹窗
+    setTimeout(() => openAddressModal?.(), 300);
+    return;
+  }
   // 1) 优先走后端接口（后端准备好后打开 USE_BACKEND）
   if (APP_CONFIG.USE_BACKEND && APP_CONFIG.API_BASE) {
     try {
@@ -1164,7 +1196,12 @@ async function submitOrder() {
      
       // 后端成功：给用户明确反馈 + 清空购物车 + 跳转取单
       const orderNo = 'TY' + Date.now().toString().slice(-6);
-      notify('下单成功！订单号：' + orderNo);
+
+// 保存订单
+addOrder({ ...payload, orderNo });
+
+alert('下单成功！订单号：' + orderNo);
+      
 
       cart = [];
       persistCart();
@@ -1276,7 +1313,18 @@ function loadAddress() {
 function saveAddress(data) {
   try { localStorage.setItem(ADDRESS_KEY, JSON.stringify(data)); } catch {}
 }
+APP.STORE.loadAddress = function () {
+  try { return JSON.parse(localStorage.getItem(APP.KEYS.ADDRESS) || 'null'); }
+  catch (e) { return null; }
+};
 
+APP.STORE.saveAddress = function (payload) {
+  try { localStorage.setItem(APP.KEYS.ADDRESS, JSON.stringify(payload)); } catch (e) {}
+};
+
+APP.STORE.clearAddress = function () {
+  try { localStorage.removeItem(APP.KEYS.ADDRESS); } catch (e) {}
+};
 function openAddressForm() {
   const saved = loadAddress() || {};
   openCommonModal({
@@ -1450,6 +1498,20 @@ function closeAddressModal() {
   m.classList.add('hidden');
   m.classList.remove('flex');
 }
+APP.STORE.loadOrders = function () {
+  try { return JSON.parse(localStorage.getItem(APP.KEYS.ORDERS) || '[]'); }
+  catch (e) { return []; }
+};
+
+APP.STORE.saveOrders = function (orders) {
+  try { localStorage.setItem(APP.KEYS.ORDERS, JSON.stringify(orders)); } catch (e) {}
+};
+
+APP.STORE.pushOrder = function (order) {
+  const orders = APP.STORE.loadOrders();
+  orders.unshift(order);
+  APP.STORE.saveOrders(orders.slice(0, 30)); // 只保留最近30单
+};
 function saveAddress() {
   const name  = (document.getElementById('addr-name')?.value || '').trim();
   const phone = (document.getElementById('addr-phone')?.value || '').trim();
@@ -1457,15 +1519,17 @@ function saveAddress() {
   const note  = (document.getElementById('addr-note')?.value || '').trim();
 
   if (!name || !phone || !addr) {
-    notify('请填写：姓名 / 电话 / 地址');
+    alert('请填写：姓名 / 电话 / 地址');
     return;
   }
 
-  const payload = { name, phone, addr, note, updatedAt: Date.now() };
-  try { localStorage.setItem(ADDRESS_KEY, JSON.stringify(payload)); } catch (e) {}
+  APP.STORE.saveAddress({ name, phone, addr, note, updatedAt: Date.now() });
 
-  notify('地址已保存');
-  closeAddressModal();
+  // 我的页显示摘要（可选：如果你有一个展示节点）
+  APP.UI.refreshMeSummary?.();
+
+  alert('地址已保存');
+  closeAddressModal?.();
 }
 
 function clearSavedAddress() {
