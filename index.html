@@ -166,12 +166,18 @@ img {
         </section>
 
         <section id="page-pickup" class="hidden p-4 h-full overflow-y-auto bg-gray-50">
-            <h2 class="text-lg font-bold mb-4">🔔 取单进度</h2>
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-orange-100 text-center">
-                <p class="text-gray-400 mb-2">当前暂无可取的订单</p>
-                <button onclick="switchTab('order')" class="text-orange-500 font-bold">去喝一杯 ➔</button>
-            </div>
-        </section>
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-lg font-bold">🔔 取单进度</h2>
+    <button onclick="clearOrders()" class="text-xs text-gray-400 underline">清空</button>
+  </div>
+
+  <div id="pickup-list" class="space-y-3"></div>
+
+  <div id="pickup-empty" class="hidden bg-white p-6 rounded-2xl shadow-sm border border-orange-100 text-center">
+    <p class="text-gray-400 mb-2">当前暂无可取的订单</p>
+    <button onclick="switchTab('order')" class="text-orange-500 font-bold">去喝一杯 ➔</button>
+  </div>
+</section>
 
         <section id="page-me" class="hidden h-full overflow-y-auto bg-gray-50">
             <div class="bg-orange-500 p-8 text-white rounded-b-[40px] shadow-lg">
@@ -1220,15 +1226,152 @@ alert('下单成功！订单号：' + orderNo);
 
   // MVP：前端直接给成功反馈（真正生产要等 bot/后端确认后再提示）
   const orderNo = 'TY' + Date.now().toString().slice(-6);
-  notify('已发送订单（MVP）！订单号：' + orderNo);
+notify('已发送订单（MVP）！订单号：' + orderNo);
 
-  cart = [];
-  persistCart();
-  updateCartUI();
-  renderCartPage();
-  switchTab('pickup');
+// ✅ 新增：保存到“取单进度”
+addOrderRecord({ orderNo, payload });
+
+cart = [];
+persistCart();
+updateCartUI();
+renderCartPage();
+switchTab('pickup');
+}
+// =========================
+// Pickup Page: Orders (LocalStorage MVP)
+// =========================
+const ORDER_KEY = 'tiktalk_orders_v1';
+
+function loadOrders() {
+  try {
+    const arr = JSON.parse(localStorage.getItem(ORDER_KEY) || '[]');
+    return Array.isArray(arr) ? arr : [];
+  } catch (e) {
+    return [];
+  }
 }
 
+function saveOrders(list) {
+  try { localStorage.setItem(ORDER_KEY, JSON.stringify(list || [])); } catch (e) {}
+}
+
+function addOrderRecord({ orderNo, payload }) {
+  const list = loadOrders();
+
+  // 生成一个更易读的 items
+  const items = (payload?.items || []).map(x => ({
+    productId: x.productId || x.id || '',
+    nameZh: x.productNameZh || x.name || '',
+    nameEn: x.productNameEn || '',
+    specs: x.specs || '',
+    qty: Number(x.quantity || x.qty || 1),
+    unitPrice: Number(x.unitPrice || x.price || 0),
+    lineTotal: Number(x.lineTotal || 0) || (Number(x.unitPrice || x.price || 0) * Number(x.quantity || x.qty || 1))
+  }));
+
+  const total = Number(payload?.total || payload?.subtotal || items.reduce((s, it) => s + Number(it.lineTotal || 0), 0));
+
+  list.unshift({
+    orderNo,
+    createdAt: Date.now(),
+    status: 'pending', // pending | done
+    total,
+    currency: payload?.currency || 'PHP',
+    items
+  });
+
+  saveOrders(list);
+  renderPickupPage();
+}
+
+function markOrderDone(orderNo) {
+  const list = loadOrders();
+  const target = list.find(o => o.orderNo === orderNo);
+  if (target) target.status = 'done';
+  saveOrders(list);
+  renderPickupPage();
+}
+
+function clearOrders() {
+  saveOrders([]);
+  renderPickupPage();
+}
+
+function formatTime(ts) {
+  const d = new Date(ts);
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
+function renderPickupPage() {
+  const cont = document.getElementById('pickup-list');
+  const empty = document.getElementById('pickup-empty');
+  if (!cont || !empty) return;
+
+  const orders = loadOrders();
+
+  if (!orders.length) {
+    cont.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+
+  empty.classList.add('hidden');
+
+  cont.innerHTML = orders.map(o => {
+    const itemsHtml = (o.items || []).slice(0, 4).map(it => {
+      const name = it.nameZh || it.productId || 'Item';
+      const spec = it.specs ? ` <span class="text-[10px] text-orange-500 font-bold">(${it.specs})</span>` : '';
+      return `
+        <div class="flex justify-between text-xs text-gray-700">
+          <div class="truncate max-w-[75%]">
+            <span class="font-semibold">${name}</span>${spec}
+          </div>
+          <div class="shrink-0">x${it.qty}</div>
+        </div>
+      `;
+    }).join('');
+
+    const statusBadge = o.status === 'done'
+      ? `<span class="text-[10px] px-2 py-1 rounded-full bg-green-50 text-green-600 font-bold">已完成</span>`
+      : `<span class="text-[10px] px-2 py-1 rounded-full bg-yellow-50 text-yellow-700 font-bold">制作中</span>`;
+
+    const actionBtn = o.status === 'done'
+      ? `<button onclick="markOrderDone('${o.orderNo}')" class="hidden"></button>`
+      : `<button onclick="markOrderDone('${o.orderNo}')" class="text-xs bg-gray-900 text-white px-3 py-2 rounded-xl font-bold">完成</button>`;
+
+    return `
+      <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <div class="font-black text-gray-900">订单号：${o.orderNo}</div>
+            <div class="text-[10px] text-gray-400 mt-1">下单时间：${formatTime(o.createdAt)}</div>
+          </div>
+          <div class="text-right">
+            ${statusBadge}
+            <div class="text-sm font-black text-orange-500 mt-2">₱ ${o.total}</div>
+          </div>
+        </div>
+
+        <div class="mt-3 space-y-1">
+          ${itemsHtml}
+          ${(o.items || []).length > 4 ? `<div class="text-[10px] text-gray-400">…还有 ${(o.items || []).length - 4} 项</div>` : ''}
+        </div>
+
+        <div class="mt-4 flex justify-end">
+          ${actionBtn}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// 让函数在 onclick="..." 中可用
+window.renderPickupPage = renderPickupPage;
+window.markOrderDone = markOrderDone;
+window.clearOrders = clearOrders;
+        
 function sendOrderToTelegram(payload) {
   if (!payload) payload = buildOrderPayload();
 
@@ -1601,6 +1744,7 @@ function clearCartAndRefresh() {
     // 默认显示首页（保留你的原逻辑）
     switchTab('home');
     updateCartUI();
+    renderPickupPage();
     bindMePageActions();
     setTimeout(() => {
         if (document.getElementById('btn-奶盖系列')) scrollToCat('奶盖系列');
